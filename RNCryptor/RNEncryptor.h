@@ -38,6 +38,7 @@
                           handler:(RNCryptorHandler)handler;
 
 + (NSData *)encryptData:(NSData *)data withSettings:(RNCryptorSettings)settings password:(NSString *)password error:(NSError **)error;
++ (BOOL)encryptFile:(NSString *)inputFile outputFile:(NSString *)outputFile withSettings:(RNCryptorSettings)theSettings password:(NSString *)aPassword error:(NSError **)anError;
 + (NSData *)encryptData:(NSData *)data withSettings:(RNCryptorSettings)settings encryptionKey:(NSData *)encryptionKey HMACKey:(NSData *)HMACKey error:(NSError **)error;
 
 @end

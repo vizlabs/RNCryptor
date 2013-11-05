@@ -105,6 +105,81 @@ const uint8_t kRNCryptorFileVersion = 2;
   }
 }
 
++ (BOOL)synchronousOperationForCryptor:(RNCryptor *)cryptor inputFile:(NSString*)inputFile outputFile:(NSString *)outputFile error:(NSError **)anError
+{
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+
+    // Make sure that this number is larger than the header + 1 block.
+    // 33+16 bytes = 49 bytes. So it shouldn't be a problem.
+    int blockSize = 32 * 1024;
+
+    NSInputStream *inputStream = [NSInputStream inputStreamWithFileAtPath:inputFile];
+    NSOutputStream *outputStream = [NSOutputStream outputStreamToFileAtPath:outputFile append:NO];
+
+    [inputStream open];
+    [outputStream open];
+
+    // We don't need to keep making new NSData objects. We can just use one repeatedly.
+    __block NSMutableData *dataBlock = [NSMutableData dataWithLength:blockSize];
+    __block NSError *returnedError = nil;
+
+    dispatch_block_t readStreamBlock = ^{
+        [dataBlock setLength:blockSize];
+        NSInteger bytesRead = [inputStream read:[dataBlock mutableBytes] maxLength:blockSize];
+        if (bytesRead < 0) {
+            // Throw an error
+        }
+        else if (bytesRead == 0) {
+            [cryptor finish];
+            [inputStream close];
+        }
+        else {
+            [dataBlock setLength:bytesRead];
+            [cryptor addData:dataBlock];
+            //NSLog(@"Sent %ld bytes to cryptor", (unsigned long)bytesRead);
+        }
+    };
+
+    RNCryptorHandler handler = ^(RNCryptor *c, NSData *d) {
+        //NSLog(@"Cryptor recevied %ld bytes", (unsigned long)d.length);
+        [outputStream write:d.bytes maxLength:d.length];
+        if (c.isFinished) {
+            [outputStream close];
+            returnedError = c.error;
+            dispatch_semaphore_signal(sem);
+        } else {
+            readStreamBlock();
+        }
+    };
+
+    cryptor.handler = handler;
+
+    dispatch_queue_t queue = dispatch_queue_create("net.robnapier.RNEncryptor.response", DISPATCH_QUEUE_SERIAL);
+    cryptor.responseQueue = queue;
+    
+    // Read the first block to kick things off
+    readStreamBlock();
+
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+
+#if !OS_OBJECT_USE_OBJC
+    dispatch_release(sem);
+    if (queue) {
+        dispatch_release(queue);
+    }
+#endif
+
+    if (returnedError) {
+        if (anError) {
+            *anError = returnedError;
+        }
+        return false;
+    }
+    else {
+        return true;
+    }
+}
+
 // For use with OS X 10.6
 // Based on http://opensource.apple.com/source/CommonCrypto/CommonCrypto-55010/Source/API/CommonKeyDerivation.c
 /*-

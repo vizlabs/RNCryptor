@@ -54,6 +54,14 @@
   return [self synchronousResultForCryptor:cryptor data:thePlaintext error:anError];
 }
 
++ (BOOL)encryptFile:(NSString *)inputFile outputFile:(NSString *)outputFile withSettings:(RNCryptorSettings)theSettings password:(NSString *)aPassword error:(NSError **)anError
+{
+    RNEncryptor *cryptor = [[self alloc] initWithSettings:theSettings
+                                                 password:aPassword
+                                                  handler:^(RNCryptor *c, NSData *d) {}];
+    return [self synchronousOperationForCryptor:cryptor inputFile:inputFile outputFile:outputFile error:anError];
+}
+
 + (NSData *)encryptData:(NSData *)thePlaintext withSettings:(RNCryptorSettings)theSettings encryptionKey:(NSData *)anEncryptionKey HMACKey:(NSData *)anHMACKey error:(NSError **)anError
 {
   RNEncryptor *cryptor = [[self alloc] initWithSettings:theSettings

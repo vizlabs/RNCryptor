@@ -45,6 +45,7 @@
 
 - (id)initWithHandler:(RNCryptorHandler)handler;
 + (NSData *)synchronousResultForCryptor:(RNCryptor *)cryptor data:(NSData *)inData error:(NSError **)anError;
++ (BOOL)synchronousOperationForCryptor:(RNCryptor *)cryptor inputFile:(NSString*)inputFile outputFile:(NSString *)outputFile error:(NSError **)anError;
 - (void)cleanupAndNotifyWithError:(NSError *)error;
 - (BOOL)hasHMAC;
 @end
