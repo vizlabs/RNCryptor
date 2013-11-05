@@ -107,6 +107,9 @@ const uint8_t kRNCryptorFileVersion = 2;
 
 + (BOOL)synchronousOperationForCryptor:(RNCryptor *)cryptor inputFile:(NSString*)inputFile outputFile:(NSString *)outputFile error:(NSError **)anError
 {
+    // Implement stream based encryptor/decryptor routines. Based on
+    // https://github.com/vizlabs/RNCryptor#async-and-streams
+
     dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
     // Make sure that this number is larger than the header + 1 block.
