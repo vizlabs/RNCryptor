@@ -114,7 +114,17 @@ const uint8_t kRNCryptorFileVersion = 2;
 
     // Make sure that this number is larger than the header + 1 block.
     // 33+16 bytes = 49 bytes. So it shouldn't be a problem.
-    int blockSize = 32 * 1024;
+    long blockSize = 32768;
+
+    NSDictionary *fsAttributes = [[NSFileManager defaultManager] attributesOfItemAtPath:inputFile error:anError];
+    if (fsAttributes) {
+        long fileSize = [fsAttributes fileSize];
+        //NSLog(@"filesize %lu", fileSize);
+        // avoid very small last block by increasing the block size.
+        if (fileSize % blockSize < 64) {
+            blockSize += 64;
+        }
+    }
 
     NSInputStream *inputStream = [NSInputStream inputStreamWithFileAtPath:inputFile];
     NSOutputStream *outputStream = [NSOutputStream outputStreamToFileAtPath:outputFile append:NO];
@@ -125,6 +135,9 @@ const uint8_t kRNCryptorFileVersion = 2;
     // We don't need to keep making new NSData objects. We can just use one repeatedly.
     __block NSMutableData *dataBlock = [NSMutableData dataWithLength:blockSize];
     __block NSError *returnedError = nil;
+
+    // make sure encryption is valid and does not corrupt data.
+    __block BOOL validEncryption = YES;
 
     dispatch_block_t readStreamBlock = ^{
         [dataBlock setLength:blockSize];
@@ -145,6 +158,10 @@ const uint8_t kRNCryptorFileVersion = 2;
 
     RNCryptorHandler handler = ^(RNCryptor *c, NSData *d) {
         //NSLog(@"Cryptor recevied %ld bytes", (unsigned long)d.length);
+        if (d.length == 0) {
+            validEncryption = NO;
+            NSLog(@"Invalid Encrypted Data");
+        }
         [outputStream write:d.bytes maxLength:d.length];
         if (c.isFinished) {
             [outputStream close];
@@ -176,6 +193,8 @@ const uint8_t kRNCryptorFileVersion = 2;
         if (anError) {
             *anError = returnedError;
         }
+        return false;
+    } else if (!validEncryption) {
         return false;
     }
     else {
